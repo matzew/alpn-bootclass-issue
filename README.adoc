@@ -1,0 +1,67 @@
+== ALPN bootclass problem with EAP 6.4
+
+This project contains a very simple Java EE project, build as a `WAR` to show the `-Xbootclasspath` is not working, when running EAP 6.4 on OpenJDK7 (131).
+
+=== Getting started
+
+Build the project:
+
+[source,bash]
+----
+mvn clean install
+----
+
+Unzip a JBOSS EAP 6.4.11, and ownload the ALPN JAR, and store it inside of EAP's `bin folder`:
+
+[source,bash]
+----
+cd $JBOSS_HOME
+
+curl http://central.maven.org/maven2/org/mortbay/jetty/alpn/alpn-boot/7.1.3.v20150130/alpn-boot-7.1.3.v20150130.jar > bin/alpn-boot.jar
+----
+
+Now, add `-Xbootclasspath` argument to the `JAVA_OPTS` line in `bin/standalone.conf` file:
+
+[source,bash]
+----
+if [ "x$JAVA_OPTS" = "x" ]; then
+   JAVA_OPTS="-Xbootclasspath/p:/home/Matthias/jboss-eap-6.4/bin/alpn-boot.jar -Xms1303m -Xmx1303m -XX:MaxPermSize=256m -Djava.net.preferIPv4Stack=true"
+   JAVA_OPTS="$JAVA_OPTS -Djboss.modules.system.pkgs=$JBOSS_MODULES_SYSTEM_PKGS -Djava.awt.headless=true"
+   JAVA_OPTS="$JAVA_OPTS -Djboss.modules.policy-permissions=true"
+----
+
+*NOTE:* I've added the argument as the first entry on the `JAVA_OPTS` line.
+
+Now, start the server (e.g `$JBOSS_HOME/bin/standalone.sh`), and deploy the `WAR` file to the server, e.g.:
+
+[source,bash]
+----
+cp target/http2-apns.war jboss-eap-6.4/standalone/deployments/http2-apns.war 
+----
+
+Once the deployment is finished, access the endpoint, like:
+
+[source,bash]
+----
+curl -v localhost:8080/http2-apns/rest/apns
+----
+
+This gives me a stacktrace like:
+
+[source,bash]
+----
+11:24:56,926 ERROR [org.apache.catalina.core.ContainerBase.[jboss.web].[default-host].[/http2-apns].[net.wessendorf.wf.apns.RestApp]] (http-127.0.0.1:8080-1) JBWEB000236: Servlet.service() for servlet net.wessendorf.wf.apns.RestApp threw exception: org.jboss.resteasy.spi.UnhandledException: java.lang.NoClassDefFoundError: org/eclipse/jetty/alpn/ALPN$Provider
+----
+
+I did follow this instructions:
+http://undertow.io/blog/2015/03/26/HTTP2-In-Wildfly.html
+
+and I am surprised the JAR on the bootclasspath is not visible on my WAR file.
+
+
+== WildFly 10.1
+
+Using OpenJDK8 and WF 10.1, this all works out of the box, without the `bootclasspath`, as discussed here:
+http://wildfly.org/news/2016/08/19/WildFly10-1-Released/
+
+
